@@ -1,0 +1,8 @@
+{
+  "appId": "com.mini.mili.game",
+  "appName": "Mini-Mili",
+  "webDir": "www",
+  "server": {
+    "androidScheme": "https"
+  }
+}
