@@ -19,7 +19,7 @@ function Game(canvas, resources) {
         this.robotUnits = {};
 
         this.introAudio = this.resources.getAudio('intro');
-        this.introAudio.play();
+        this._safePlay(this.introAudio);
 
         var randomNoOfRobotUnits = 6;
         this.robotUnitsGenerateInterval = setInterval(
@@ -48,9 +48,11 @@ function Game(canvas, resources) {
             var distY = _this.robotUnits[i].position.y - _this.shyame.actor.position.y;
             var cOffset = 200;
             var distance = Util.calculateDistance(_this.robotUnits[i].position.x, _this.robotUnits[i].position.y, _this.shyame.actor.position.x,  _this.shyame.actor.position.y);
-            if(distance < 600 || directionCount == 2) {
-                directionCount = 0;
+            if(directionCount == 2) {
                 break;
+            }
+            if(distance < 600) {
+                continue;
             }
             var vectorX = distX / distance;
             var vectorY = distY / distance;
@@ -267,11 +269,13 @@ function Game(canvas, resources) {
 
     this.pauseGame = function () {
 
+        _this.isPaused = true;
         cancelAnimationFrame(_this.gameAnimationFrame);
     };
 
     this.resumeGame = function () {
 
+        _this.isPaused = false;
         _this.messageBox.style.opacity = 0;
         _this.gameAnimationFrame = requestAnimationFrame(_this.drawGame);
     };
@@ -285,10 +289,13 @@ function Game(canvas, resources) {
         document.getElementById('respawn').innerHTML = '';
         document.getElementById('retryButton').style.display = 'block';
 
+        clearInterval(_this.robotUnitsGenerateInterval);
+        for(var r in _this.robotUnits){
+            _this.robotUnits[r].death();
+        }
         _this.pauseGame();
         _this.removeControls();
         _this.messageBox.style.opacity = 1;
-        // _this._init();
     };
 
     this.addMovements = function(e) {
@@ -339,9 +346,11 @@ function Game(canvas, resources) {
 
     this.fireBulletEvent = function(e){
 
+        if(_this.isPaused)
+            return;
         _this.resources.getAudio('gun_shot').currentTime = 0;
         _this.gameBullets[Object.size(_this.gameBullets)] = _this.shyame.actor.weapon.fireBullet(_this.shyame.actor.position, _this.getMousePos(_this.canvas, e));
-        _this.resources.getAudio('gun_shot').play();
+        _this._safePlay(_this.resources.getAudio('gun_shot'));
     };
 
     this.addControls = function() {
@@ -350,6 +359,10 @@ function Game(canvas, resources) {
         document.addEventListener('keyup', _this.removeMovements);
         document.addEventListener('mousemove', _this.updateFaceSideEvent);
         document.addEventListener('click', _this.fireBulletEvent);
+
+        if(typeof TouchControls !== 'undefined' && TouchControls.isSupported()){
+            _this.touchControls = new TouchControls(_this);
+        }
     };
 
     this.removeControls = function () {
@@ -358,15 +371,34 @@ function Game(canvas, resources) {
         document.removeEventListener('keyup', _this.removeMovements);
         document.removeEventListener('mousemove', _this.updateFaceSideEvent);
         document.removeEventListener('click', _this.fireBulletEvent);
+
+        if(_this.touchControls){
+            _this.touchControls.destroy();
+            _this.touchControls = null;
+        }
     };
 
     this.getMousePos = function(canvas, evt) {
         var rect = canvas.getBoundingClientRect();
+        // the wrapper may be scaled with CSS to fit small screens,
+        // so convert screen pixels back to canvas pixels
+        var scaleX = rect.width ? canvas.width / rect.width : 1;
+        var scaleY = rect.height ? canvas.height / rect.height : 1;
         return {
-            x: evt.clientX - rect.left,
-            y: evt.clientY - rect.top
+            x: (evt.clientX - rect.left) * scaleX,
+            y: (evt.clientY - rect.top) * scaleY
         };
-    }
+    };
+
+    // play() returns a promise that is rejected when the browser blocks audio
+    this._safePlay = function (audio) {
+
+        try {
+            var p = audio.play();
+            if(p && p.catch)
+                p.catch(function () {});
+        } catch (err) {}
+    };
 
     this._init();
 }
