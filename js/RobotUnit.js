@@ -72,7 +72,7 @@ function RobotUnit(id, ctx, startPosition, shyame, robotUnits, mapArray, collisi
 
             var distanceToShyame = Util.calculateDistance(positionToFireX, positionToFireY, _this.position.x, _this.position.y);
             if(distanceToShyame < _this.maxSafeDistance)
-                _this.game.gameBullets[Object.size(_this.gameBullets)] = _this.weapon.fireBullet(_this.position, {x: positionToFireX, y: positionToFireY});
+                _this.game.gameBullets[Object.size(_this.game.gameBullets)] = _this.weapon.fireBullet(_this.position, {x: positionToFireX, y: positionToFireY});
 
             bulletsFireInterval = Util.getRandomInt(5, 10);
         }, bulletsFireInterval * 1000);
