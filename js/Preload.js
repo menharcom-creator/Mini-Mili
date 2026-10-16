@@ -63,8 +63,18 @@ function Preload(){
                 _this._showStartButton();
             }else{
                 var text = 'Loading ' + loaded + ' / ' + total;
-                if(new Date().getTime() - _this.startTime > 20000)
-                    text += '<br><small>Taking long. A file may be missing or named differently in the images folder.</small>';
+                if(new Date().getTime() - _this.startTime > 8000){
+
+                    // an image that finished loading with no size is a broken / missing file
+                    var missing = [];
+                    var imgs = _this.resources.images;
+                    for(var k in imgs){
+                        if(imgs.hasOwnProperty(k) && imgs[k].complete && imgs[k].naturalWidth === 0)
+                            missing.push(k);
+                    }
+                    if(missing.length)
+                        text += '<br><small>Could not load: ' + missing.join(', ') + '<br>Check the file names in the images folder.</small>';
+                }
                 _this.statusBox.innerHTML = text;
             }
         }, 250);
