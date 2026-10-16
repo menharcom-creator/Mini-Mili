@@ -1,7 +1,8 @@
 /**
  * Created by Asim on 4/20/2017.
- * Changes: no more 5 second wait, loading progress, "TAP TO START" screen
- * (browsers only allow sound after a tap/click), audio errors no longer crash.
+ * Changes: no more 5 second wait, "LOADING x/y" and a "TOUCH 2 START" prompt drawn
+ * over the splash picture (tap anywhere to start - browsers only allow sound after
+ * a tap/click), audio errors no longer crash, broken image files are named on screen.
  */
 function Preload(){
 
@@ -46,10 +47,7 @@ function Preload(){
         this.resources.addAudio('background_music', 'audio/background_music.mp3');
         this.resources.addAudio('gun_shot', 'audio/gun_shot.mp3');
 
-        this.statusBox = document.createElement('div');
-        this.statusBox.className = 'loadStatus';
-        this.statusBox.innerHTML = 'Loading...';
-        this.canvasWrapper.appendChild(this.statusBox);
+        this._createLabels();
 
         this.startTime = new Date().getTime();
 
@@ -60,33 +58,79 @@ function Preload(){
 
             if(loaded == total) {
                 clearInterval(_this.preloadInterval);
-                _this._showStartButton();
+                _this._showStartPrompt();
             }else{
-                var text = 'Loading ' + loaded + ' / ' + total;
-                if(new Date().getTime() - _this.startTime > 8000){
-
-                    // an image that finished loading with no size is a broken / missing file
-                    var missing = [];
-                    var imgs = _this.resources.images;
-                    for(var k in imgs){
-                        if(imgs.hasOwnProperty(k) && imgs[k].complete && imgs[k].naturalWidth === 0)
-                            missing.push(k);
-                    }
-                    if(missing.length)
-                        text += '<br><small>Could not load: ' + missing.join(', ') + '<br>Check the file names in the images folder.</small>';
-                }
-                _this.statusBox.innerHTML = text;
+                _this._setLabels('LOADING', loaded + '/' + total, false);
+                if(new Date().getTime() - _this.startTime > 8000)
+                    _this._showMissingFiles();
             }
         }, 250);
     };
 
-    this._showStartButton = function () {
+    // the two words go on the left and right of the big "2" that is part of the splash picture
+    this._createLabels = function () {
+
+        var style = 'position:absolute;top:38.3%;transform:translate(-50%,-50%);z-index:5;margin:0;' +
+            'font:bold 28px Impact,Haettenschweiler,"Arial Narrow",sans-serif;letter-spacing:2px;' +
+            'text-transform:uppercase;white-space:nowrap;pointer-events:none;color:#d3d6d9;' +
+            'text-shadow:1px 1px 0 #2b2b33,-1px -1px 0 #2b2b33,1px -1px 0 #2b2b33,-1px 1px 0 #2b2b33,0 2px 4px rgba(0,0,0,0.7);';
+
+        this.leftLabel = document.createElement('div');
+        this.leftLabel.className = 'splashLabel';
+        this.leftLabel.style.cssText = style + 'left:45.3%;';
+
+        this.rightLabel = document.createElement('div');
+        this.rightLabel.className = 'splashLabel';
+        this.rightLabel.style.cssText = style + 'left:53.7%;';
+
+        this.noteBox = document.createElement('div');
+        this.noteBox.className = 'splashNote';
+        this.noteBox.style.cssText = 'position:absolute;left:50%;bottom:90px;transform:translateX(-50%);z-index:5;' +
+            'padding:6px 14px;border-radius:6px;background:rgba(0,0,0,0.6);color:#fff;' +
+            'font:14px Arial,sans-serif;text-align:center;display:none;pointer-events:none;';
+
+        // small version number: shows which files the phone really loaded
+        this.versionTag = document.createElement('div');
+        this.versionTag.style.cssText = 'position:absolute;left:8px;bottom:6px;z-index:5;' +
+            'font:11px Arial,sans-serif;color:rgba(255,255,255,0.55);pointer-events:none;';
+        this.versionTag.innerHTML = 'v4';
+
+        this.canvasWrapper.appendChild(this.leftLabel);
+        this.canvasWrapper.appendChild(this.rightLabel);
+        this.canvasWrapper.appendChild(this.noteBox);
+        this.canvasWrapper.appendChild(this.versionTag);
+
+        this._setLabels('LOADING', '0/' + Object.size(this.resources.images), false);
+    };
+
+    this._setLabels = function (left, right, blink) {
+
+        _this.leftLabel.innerHTML = left;
+        _this.rightLabel.innerHTML = right;
+        _this.leftLabel.className = _this.rightLabel.className = blink ? 'splashLabel blink' : 'splashLabel';
+    };
+
+    // an image that finished loading with no size is a broken / missing file
+    this._showMissingFiles = function () {
+
+        var missing = [];
+        var imgs = _this.resources.images;
+        for(var k in imgs){
+            if(imgs.hasOwnProperty(k) && imgs[k].complete && imgs[k].naturalWidth === 0)
+                missing.push(k);
+        }
+        if(missing.length){
+            _this.noteBox.style.display = 'block';
+            _this.noteBox.innerHTML = 'Could not load: ' + missing.join(', ') + '<br>Check the file names in the images folder.';
+        }
+    };
+
+    this._showStartPrompt = function () {
 
         var started = false;
-        var box = _this.statusBox;
 
-        box.className = 'loadStatus ready';
-        box.innerHTML = 'TAP TO START';
+        _this.noteBox.style.display = 'none';
+        _this._setLabels('TOUCH', 'START', true);
 
         var start = function (e) {
 
@@ -96,15 +140,21 @@ function Preload(){
                 return;
             started = true;
 
-            if(box.parentNode)
-                box.parentNode.removeChild(box);
+            document.removeEventListener('click', start);
+            document.removeEventListener('touchend', start);
+
+            _this.canvasWrapper.removeChild(_this.leftLabel);
+            _this.canvasWrapper.removeChild(_this.rightLabel);
+            _this.canvasWrapper.removeChild(_this.noteBox);
+            _this.canvasWrapper.removeChild(_this.versionTag);
             _this.splashAudio.pause();
             // created inside the tap, so the browser allows the game sounds
             new Game(_this.canvas, _this.resources);
         };
 
-        box.addEventListener('click', start);
-        box.addEventListener('touchend', start);
+        // tap anywhere on the screen
+        document.addEventListener('click', start);
+        document.addEventListener('touchend', start);
     };
 
     this._init();
