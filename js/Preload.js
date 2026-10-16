@@ -1,5 +1,7 @@
 /**
  * Created by Asim on 4/20/2017.
+ * Changes: no more 5 second wait, loading progress, "TAP TO START" screen
+ * (browsers only allow sound after a tap/click), audio errors no longer crash.
  */
 function Preload(){
 
@@ -20,7 +22,12 @@ function Preload(){
         };
 
         this.splashAudio = new Audio('audio/splash.aac');
-        this.splashAudio.play();
+        // the browser may block this until the player taps, that is fine
+        try {
+            var p = this.splashAudio.play();
+            if(p && p.catch)
+                p.catch(function () {});
+        } catch (err) {}
 
         this.resources = new Resources();
 
@@ -39,17 +46,56 @@ function Preload(){
         this.resources.addAudio('background_music', 'audio/background_music.mp3');
         this.resources.addAudio('gun_shot', 'audio/gun_shot.mp3');
 
+        this.statusBox = document.createElement('div');
+        this.statusBox.className = 'loadStatus';
+        this.statusBox.innerHTML = 'Loading...';
+        this.canvasWrapper.appendChild(this.statusBox);
+
+        this.startTime = new Date().getTime();
+
         this.preloadInterval = setInterval(function () {
-            if(_this.resources.imageLoadedCount == Object.size(_this.resources.images)) {
-                _this.splashAudio.pause();
-                delete _this.splashAudio;
+
+            var total = Object.size(_this.resources.images);
+            var loaded = _this.resources.imageLoadedCount;
+
+            if(loaded == total) {
                 clearInterval(_this.preloadInterval);
-                new Game(_this.canvas, _this.resources);
+                _this._showStartButton();
             }else{
-                // console.log('here');
+                var text = 'Loading ' + loaded + ' / ' + total;
+                if(new Date().getTime() - _this.startTime > 20000)
+                    text += '<br><small>Taking long. A file may be missing or named differently in the images folder.</small>';
+                _this.statusBox.innerHTML = text;
             }
-        }, 5000);
-    }
+        }, 250);
+    };
+
+    this._showStartButton = function () {
+
+        var started = false;
+        var box = _this.statusBox;
+
+        box.className = 'loadStatus ready';
+        box.innerHTML = 'TAP TO START';
+
+        var start = function (e) {
+
+            if(e && e.preventDefault)
+                e.preventDefault();
+            if(started)
+                return;
+            started = true;
+
+            if(box.parentNode)
+                box.parentNode.removeChild(box);
+            _this.splashAudio.pause();
+            // created inside the tap, so the browser allows the game sounds
+            new Game(_this.canvas, _this.resources);
+        };
+
+        box.addEventListener('click', start);
+        box.addEventListener('touchend', start);
+    };
 
     this._init();
 }
