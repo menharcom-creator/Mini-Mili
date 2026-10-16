@@ -1,0 +1,95 @@
+name: Build unsigned IPA
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - name: Get the code
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Collect the game files (no .psd files)
+        run: |
+          mkdir -p www
+          cp index.html www/
+          cp -R css js images audio www/
+          find www -name "*.psd" -delete
+          find www -name ".DS_Store" -delete
+          du -sh www
+
+      - name: Create the iOS app with Capacitor
+        run: |
+          npm init -y
+          npm install @capacitor/core@7 @capacitor/cli@7 @capacitor/ios@7
+          cat > capacitor.config.json <<'JSON'
+          {
+            "appId": "com.menharcom.minimili",
+            "appName": "Mini Militia",
+            "webDir": "www",
+            "backgroundColor": "#666666",
+            "ios": { "contentInset": "never" }
+          }
+          JSON
+          npx cap add ios
+          npx cap sync ios
+
+      - name: Landscape only, hide status bar
+        run: |
+          PLIST=ios/App/App/Info.plist
+          for KEY in UISupportedInterfaceOrientations "UISupportedInterfaceOrientations~ipad"; do
+            /usr/libexec/PlistBuddy -c "Delete :$KEY" "$PLIST" || true
+            /usr/libexec/PlistBuddy -c "Add :$KEY array" "$PLIST"
+            /usr/libexec/PlistBuddy -c "Add :$KEY:0 string UIInterfaceOrientationLandscapeLeft" "$PLIST"
+            /usr/libexec/PlistBuddy -c "Add :$KEY:1 string UIInterfaceOrientationLandscapeRight" "$PLIST"
+          done
+          /usr/libexec/PlistBuddy -c "Delete :UIStatusBarHidden" "$PLIST" || true
+          /usr/libexec/PlistBuddy -c "Add :UIStatusBarHidden bool true" "$PLIST"
+          /usr/libexec/PlistBuddy -c "Delete :UIViewControllerBasedStatusBarAppearance" "$PLIST" || true
+          /usr/libexec/PlistBuddy -c "Add :UIViewControllerBasedStatusBarAppearance bool false" "$PLIST"
+
+      - name: Build without signing
+        run: |
+          cd ios/App
+          if [ -d App.xcworkspace ]; then
+            TARGET="-workspace App.xcworkspace"
+          else
+            TARGET="-project App.xcodeproj"
+          fi
+          xcodebuild $TARGET -scheme App -configuration Release -sdk iphoneos \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
+            build
+
+      - name: Pack the IPA
+        run: |
+          mkdir Payload
+          cp -R ios/App/build/Build/Products/Release-iphoneos/App.app Payload/
+          zip -qr MiniMilitia.ipa Payload
+          ls -lh MiniMilitia.ipa
+
+      - name: Keep the IPA as a build file
+        uses: actions/upload-artifact@v4
+        with:
+          name: MiniMilitia-unsigned-ipa
+          path: MiniMilitia.ipa
+
+      - name: Publish the IPA as a release (direct download link)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete latest --yes --cleanup-tag || true
+          gh release create latest MiniMilitia.ipa \
+            --title "Mini Militia - unsigned IPA" \
+            --notes "Unsigned IPA. Sign it with ESign (or similar) before installing."
