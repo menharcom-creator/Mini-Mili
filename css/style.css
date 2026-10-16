@@ -1,16 +1,27 @@
+html, body{
+
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+}
+
 body{
 
     background: #666;
+    -webkit-text-size-adjust: 100%;
 }
 
 .wrapper{
 
     overflow: hidden;
     width: 1360px;
-    position: relative;
+    position: absolute;
+    left: 50%;
+    top: 0;
+    margin-left: -680px;
+    transform-origin: top center;
     height: 645px;
-    margin: 0 auto;
-    background-image: url('../images/background.jpg');
+    background-image: url('../images/background.jpeg');
     background-size: contain;
     border-bottom: 10px solid black;
     cursor: url(../images/gun-target.png), pointer;
@@ -29,6 +40,7 @@ canvas{
     text-align: center;
     position: absolute;
     opacity: 0;
+    pointer-events: none;
     top: 50%;
     padding: 23%;
     left: 50%;
@@ -62,6 +74,8 @@ canvas{
     border-radius: 5px;
     display: none;
     margin: 0 auto;
+    pointer-events: auto;
+    cursor: pointer;
 }
 
 .noselect {
@@ -72,4 +86,92 @@ canvas{
     -ms-user-select: none; /* Internet Explorer/Edge */
     user-select: none; /* Non-prefixed version, currently
                                   supported by Chrome and Opera */
+}
+
+/* "TOUCH 2 START" prompt on the splash screen */
+@keyframes splashPulse{
+
+    0%, 100%{ opacity: 1; }
+    50%{ opacity: 0.3; }
+}
+
+.splashLabel.blink{
+
+    animation: splashPulse 1.3s ease-in-out infinite;
+}
+
+/* touch controls (phones / tablets) */
+#touchControls{
+
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 50;
+    touch-action: none;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+#touchControls .joyBase{
+
+    display: none;
+    position: absolute;
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    border: 3px solid rgba(255, 255, 255, 0.6);
+    background: rgba(255, 255, 255, 0.15);
+}
+
+#touchControls .joyKnob{
+
+    position: absolute;
+    left: 35px;
+    top: 35px;
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.7);
+}
+
+#touchControls .touchHint{
+
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 14px;
+    text-align: center;
+    color: #fff;
+    font: 14px Arial, sans-serif;
+    text-shadow: 0 1px 3px #000;
+    transition: opacity 1s;
+}
+
+#rotateHint{
+
+    display: none;
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 100;
+    background: #000;
+    color: #fff;
+    font: bold 20px Arial, sans-serif;
+    text-align: center;
+    align-items: center;
+    justify-content: center;
+}
+
+@media (orientation: portrait) and (pointer: coarse){
+
+    #rotateHint{
+
+        display: flex;
+    }
 }
