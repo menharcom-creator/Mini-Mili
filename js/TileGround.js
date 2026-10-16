@@ -82,11 +82,12 @@ function TileGround(ctx) {
         var toY = Math.round((obstaclePosition.y + obstacleHeight) / TILE_SIZE) - 3;
         var toX = Math.round((obstaclePosition.x + obstacleWidth) / TILE_SIZE) - 2;
 
-        for(i = fromY; i < toY; i++){
+        for(var i = fromY; i < toY; i++){
 
-            for(j = fromX; j < toX; j++){
+            for(var j = fromX; j < toX; j++){
 
-                _this.mapArray[i][j].tileType = 4;
+                if(_this.mapArray[i] && _this.mapArray[i][j])
+                    _this.mapArray[i][j].tileType = 4;
                 // console.log('y = ' + i + ', x = ' + j);
             }
         }
